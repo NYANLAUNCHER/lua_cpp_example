@@ -36,7 +36,7 @@
       ] ++ nativeBuildInputs;
       shellHook = ''
         export pname=${pname}
-        make -s .ccls
+        make .ccls &> /dev/null
       '';
     };
   };
