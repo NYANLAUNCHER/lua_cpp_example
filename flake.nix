@@ -7,6 +7,7 @@
   let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
+
     ##########################################
     pname = "lua_cpp_example";
     version = "0.1.0";
@@ -35,7 +36,7 @@
       ] ++ nativeBuildInputs;
       shellHook = ''
         export pname=${pname}
-        export out=""
+        make -s .ccls
       '';
     };
   };
