@@ -1,4 +1,6 @@
 build/**
 .ccls-cache/
 .ccls
+result
+outputs
 **/Session.vim
