@@ -1,12 +1,19 @@
 print("hello from lua!")
+local AttribType = {
+    GENERIC=0,
+    POSITION=1,
+    NORMAL=2,
+    TEXTURE_COORD=3,
+    COLOR=4,
+};
 local layout = {-- valid types: position, normal, texture_coord, color
   {-- attribute 1
-    type="position",
+    type=AttribType.POSITION,
     -- Valid Range: 1..4
     size=2 -- X, Y
   },
   {-- attribute 2
-    type="color",
+    type=AttribType.COLOR,
     -- Valid Range: 1..4
     size=3 -- R, G, B
   },
@@ -32,8 +39,9 @@ local mesh_id = createMesh(layout, mesh)
 -- for now, just prints mesh to console (from cpp)
 drawMesh(mesh_id)
 
+--[[
 mesh = {
--- position    color
+--  position       color
   {-0.5, 0.5,  1.0, 0.0, 0.0}, -- Top left (1)
   { 0.5, 0.5,  0.0, 1.0, 0.0}, -- Top right (2)
   { 0.5,-0.5,  0.0, 0.0, 1.0}, -- Bottom Right (3)
@@ -52,3 +60,4 @@ mesh = {
 updateMesh(mesh_id, mesh)
 -- Re-draw mesh
 drawMesh(mesh_id)
+--]]

@@ -38,7 +38,7 @@ build: $(SUBMAKE) .ccls
 
 .PHONY: run
 run: build
-	@echo -e '\n\033[0;34m$(TARGET)\033[0m'
+	@echo -e '\n\033[0;32mRunning Executable: \033[0;34m./$(shell realpath --relative-to="./" $(TARGET))\033[0m'
 	@$(TARGET)
 
 .PHONY: debug
