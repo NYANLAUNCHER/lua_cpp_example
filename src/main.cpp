@@ -31,29 +31,32 @@ enum AttribType {
     TEXTURE_COORD,
     COLOR,
 };
-
 struct Attrib {
     enum AttribType type;
-    unsigned int size;
+    unsigned int components;
 };
-
 struct MeshData {
-    unsigned int vertCount;
+    // vertices
     float* vertexData;
     unsigned int* indices;
+    unsigned int vertCount;
+    // attributes
+    Attrib* attributes;
     unsigned int attribCount;
-    struct attributes {
-        enum AttribType type;
-        unsigned int size;
-    };
 };
-
+// Pretty-printing for MeshData
 std::ostream& operator<<(std::ostream& os, const MeshData& m) {
-    os << "(" << p.x << ", " << p.y << ")";
-    for (int i=0; i < m.vertCount; ++i) {
-        os << 
+    unsigned int vertComponents=0;
+    for (int i=0; i < m.attribCount; ++i) {
+        vertComponents += m.attributes[i].components;
     }
-    return os; // allow chaining: cout << a << b;
+    for (int i=0; i < m.vertCount; ++i) {
+        os << "{ ";
+        for (int d=0; d < vertComponents; ++d)
+            os << m.vertexData[i+d] << ", ";
+        os << " }\n";
+    }
+    return os;
 }
 
 static int gMESH_INDEX=0;
