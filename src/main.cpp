@@ -38,10 +38,23 @@ struct Attrib {
 };
 
 struct MeshData {
+    unsigned int vertCount;
     float* vertexData;
     unsigned int* indices;
-    Attrib* attributes;
+    unsigned int attribCount;
+    struct attributes {
+        enum AttribType type;
+        unsigned int size;
+    };
 };
+
+std::ostream& operator<<(std::ostream& os, const MeshData& m) {
+    os << "(" << p.x << ", " << p.y << ")";
+    for (int i=0; i < m.vertCount; ++i) {
+        os << 
+    }
+    return os; // allow chaining: cout << a << b;
+}
 
 static int gMESH_INDEX=0;
 static MeshData* gMESH_DATA;
