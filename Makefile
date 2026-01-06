@@ -56,7 +56,7 @@ clean: # clean build artifacts
 .PHONY: clean-git
 clean-git: # clean untracked files
 	@echo -e '\033[0;32mCleaning untracked files: \033[0m'
-	git clean -Xfd -n
+	git clean -Xfd
 
 .PHONY: install
 install: build # sync the $(build) and $(out) directories
