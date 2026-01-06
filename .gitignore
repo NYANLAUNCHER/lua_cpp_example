@@ -1,6 +1,7 @@
+# Build artifacts
 build/**
+result
+# Tools
 .ccls-cache/
 .ccls
-result
-outputs
 **/Session.vim

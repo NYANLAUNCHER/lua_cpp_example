@@ -4,11 +4,10 @@ $(error Must provide variable: $$(pname))
 endif
 export TOP := $(CURDIR)
 export build := $(TOP)/build
-ifndef out
-	out := $(build)
-endif
-# resource destination, gets hard-coded into binary
-export RESDEST := $(out)/share/$(pname)
+# output directories
+export BINDEST := $(build)/bin
+export LIBDEST := $(build)/lib
+export RESDEST := $(build)/share/$(pname)
 
 # Default flags
 export MAKE := $(MAKE) --no-print-directory

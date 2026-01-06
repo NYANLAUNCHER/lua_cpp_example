@@ -1,11 +1,7 @@
-print("hello from lua!")
-local AttribType = {
-    GENERIC=0,
-    POSITION=1,
-    NORMAL=2,
-    TEXTURE_COORD=3,
-    COLOR=4,
-};
+#!/usr/bin/env lua
+print("hello from test.lua!")
+package.path=package.path..";./?/init.lua"
+local AttribType=require('CPP').AttribType
 local layout = {-- valid types: position, normal, texture_coord, color
   {-- attribute 1
     type=AttribType.POSITION,

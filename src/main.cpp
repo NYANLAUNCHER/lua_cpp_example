@@ -8,6 +8,7 @@
 #include <lua.hpp>
 // Local
 #include "_generated/sys_paths.h"
+typedef unsigned int uint;
 
 void readfile(const std::string path, std::string& src) {
     std::ifstream file;
@@ -32,27 +33,27 @@ enum AttribType {
     COLOR,
 };
 struct Attrib {
-    enum AttribType type;
-    unsigned int components;
+    AttribType type;
+    uint components;
 };
 struct MeshData {
     // vertices
     float* vertexData;
-    unsigned int* indices;
-    unsigned int vertCount;
+    uint* indices;
+    uint vertCount;
     // attributes
     Attrib* attributes;
-    unsigned int attribCount;
+    uint attribCount;
 };
 // Pretty-printing for MeshData
 std::ostream& operator<<(std::ostream& os, const MeshData& m) {
-    unsigned int vertComponents=0;
-    for (int i=0; i < m.attribCount; ++i) {
+    uint vertComponents=0;
+    for (uint i=0; i < m.attribCount; ++i) {
         vertComponents += m.attributes[i].components;
     }
-    for (int i=0; i < m.vertCount; ++i) {
+    for (uint i=0; i < m.vertCount; ++i) {
         os << "{ ";
-        for (int d=0; d < vertComponents; ++d)
+        for (uint d=0; d < vertComponents; ++d)
             os << m.vertexData[i+d] << ", ";
         os << " }\n";
     }
@@ -64,53 +65,29 @@ static MeshData* gMESH_DATA;
 
 // Cpp functions to call from lua
 // Load mesh data into a cpp struct
-// returns mesh_id
 auto createMesh = [](lua_State* L) -> int {
     // args: Attrib* layout, MeshData mesh
     gMESH_INDEX++;
+    // userdata
     MeshData mesh=gMESH_DATA[gMESH_INDEX];
     // return mesh_id
     lua_pushnumber(L, gMESH_INDEX);
     return 1;// number of return values
 };
-// Print out mesh data
+// Print out mesh data from cpp
 auto drawMesh = [](lua_State* L) -> int {
+    std::cout << gMESH_DATA << std::endl;
     return 0;// number of return values
 };
-// Update mesh data
+// Update cpp mesh data
 auto updateMesh = [](lua_State* L) -> int {
     return 0;// number of return values
 };
 
 int main() {
-    std::string lua_src = R"(
-    local layout = {
-      {
-        type="position",
-        size=2
-      },
-      {
-        type="color",
-        size=3
-      },
-    }
-    local mesh = {
-      --position    color
-      {-0.5, 0.5,  1.0, 0.0, 0.0}, -- Top left (1)
-      { 0.5, 0.5,  0.0, 1.0, 0.0}, -- Top right (2)
-      { 0.5,-0.5,  0.0, 0.0, 1.0}, -- Bottom Right (3)
-      {-0.5,-0.5,  0.0, 0.0, 0.0}, -- Bottom Left (4)
-      -- EBO Data:
-      -- Note index starts with 1
-      indices={-- using CW winding order
-        1, 2, 3, -- upper-right triangle
-        1, 3, 4  -- lower-left triangle
-      }
-    }
-    createMesh(layout, mesh)
-    meshIdx = createMesh(layout, mesh)
-    )";
-    //readfile(LUA_DIR"/test.lua", lua_src);
+    std::string lua_src;
+    readfile(LUA_DIR"/simple.lua", lua_src);
+    std::cout << "```lua\n" << lua_src << "```" << std::endl;
     // Create Lua state
     lua_State* L = luaL_newstate();
     // Push globals
@@ -122,8 +99,8 @@ int main() {
     lua_setglobal(L, "drawMesh");
     // Run Lua File
     luaL_dostring(L, lua_src.c_str());
-    lua_getglobal(L, "meshIdx");
-    printf("meshIdx = %d\n", (int)lua_tointeger(L, -1));
+    lua_getglobal(L, "MeshIdx");
+    std::cout << "MeshIdx = " << (int)lua_tointeger(L, -1) << std::endl;
     // Cleanup
     lua_close(L);
     return 0;
