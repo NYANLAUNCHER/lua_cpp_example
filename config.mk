@@ -7,7 +7,11 @@ export build := $(TOP)/build
 # output directories
 export BINDEST := $(build)/bin
 export LIBDEST := $(build)/lib
-export RESDEST := $(build)/share/$(pname)
+# ensures compatability with `nix run` & `nix build`
+ifndef out
+out := $(build)
+endif
+export RESDEST := $(out)/share/$(pname)
 
 # Default flags
 export MAKE := $(MAKE) --no-print-directory
