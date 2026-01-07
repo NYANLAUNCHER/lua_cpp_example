@@ -25,4 +25,4 @@ local mesh = {
   }
 }
 createMesh(layout, mesh)
-MeshIdx = createMesh(layout, mesh)
+local mesh_id = createMesh(layout, mesh)

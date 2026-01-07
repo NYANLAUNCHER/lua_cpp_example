@@ -3,7 +3,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <exception>
+#include <cassert>
 // lua
 #include <lua.hpp>
 // Local
@@ -26,81 +28,67 @@ void readfile(const std::string path, std::string& src) {
 }
 
 enum AttribType {
-    GENERIC,
-    POSITION,
-    NORMAL,
-    TEXTURE_COORD,
-    COLOR,
+    GENERIC=0,
+    POSITION=1,
+    NORMAL=2,
+    TEXTURE_COORD=3,
+    COLOR=4,
 };
 struct Attrib {
-    AttribType type;
-    uint components;
+    uint type;// see: enum AttribType
+    uint size;// number of components
 };
 struct MeshData {
     // vertices
-    float* vertexData;
-    uint* indices;
-    uint vertCount;
+    std::vector<float> vertexData;
+    std::vector<uint> indices;
+    uint vert_count=0;
     // attributes
-    Attrib* attributes;
-    uint attribCount;
+    std::vector<Attrib> attributes;
+    uint attrib_count=0;
 };
 // Pretty-printing for MeshData
 std::ostream& operator<<(std::ostream& os, const MeshData& m) {
-    uint vertComponents=0;
-    for (uint i=0; i < m.attribCount; ++i) {
-        vertComponents += m.attributes[i].components;
-    }
-    for (uint i=0; i < m.vertCount; ++i) {
-        os << "{ ";
-        for (uint d=0; d < vertComponents; ++d)
-            os << m.vertexData[i+d] << ", ";
-        os << " }\n";
-    }
+    os << "Hello from MeshData";
     return os;
 }
 
-static int gMESH_INDEX=0;
-static MeshData* gMESH_DATA;
+// Cpp MeshData for lua to manipulate
+static std::vector<MeshData> gMESH_DATA;
 
-// Cpp functions to call from lua
-// Load mesh data into a cpp struct
+// args: Attrib* layout, MeshData mesh
 auto createMesh = [](lua_State* L) -> int {
-    // args: Attrib* layout, MeshData mesh
-    gMESH_INDEX++;
-    // userdata
-    MeshData mesh=gMESH_DATA[gMESH_INDEX];
-    // return mesh_id
-    lua_pushnumber(L, gMESH_INDEX);
-    return 1;// number of return values
+    // return userdata
+    //MeshData* mesh = (MeshData*)lua_newuserdata(L, sizeof(MeshData));
+    return 1;
 };
-// Print out mesh data from cpp
+// args: userdata MeshData
 auto drawMesh = [](lua_State* L) -> int {
-    std::cout << gMESH_DATA << std::endl;
-    return 0;// number of return values
+    assert(lua_isuserdata(L, 1));
+    std::cout << *(MeshData*)(lua_touserdata(L, 1)) << std::endl;
+    return 0;
 };
-// Update cpp mesh data
 auto updateMesh = [](lua_State* L) -> int {
-    return 0;// number of return values
+    return 0;
 };
 
 int main() {
     std::string lua_src;
     readfile(LUA_DIR"/simple.lua", lua_src);
-    std::cout << "```lua\n" << lua_src << "```" << std::endl;
+    std::cout << "```lua\n" << lua_src << "\n```" << std::endl;
     // Create Lua state
     lua_State* L = luaL_newstate();
-    // Push globals
+    // Create new MeshData for Cpp
     lua_pushcfunction(L, createMesh);
     lua_setglobal(L, "createMesh");
+    // Update existing MeshData in Cpp
     lua_pushcfunction(L, updateMesh);
     lua_setglobal(L, "updateMesh");
+    // Print MeshData
     lua_pushcfunction(L, drawMesh);
     lua_setglobal(L, "drawMesh");
-    // Run Lua File
+    // Run Lua Script
     luaL_dostring(L, lua_src.c_str());
-    lua_getglobal(L, "MeshIdx");
-    std::cout << "MeshIdx = " << (int)lua_tointeger(L, -1) << std::endl;
     // Cleanup
     lua_close(L);
     return 0;
