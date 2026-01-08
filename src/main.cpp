@@ -74,14 +74,15 @@ int main() {
     luaL_dostring(L, lua_src.c_str());
     // overwrite lua_src with lua script
     readfile(lua_path, lua_src);
-    std::cout << "```" << BLUE(lua_path) << "\n" << lua_src << "\n```" << std::endl;
+    std::cout << "\n```" << BLUE(lua_path) << "\n" << lua_src << "\n```" << std::endl;
 
     // Create new MeshData for Cpp
     // args: layout, mesh, [indices]
     lua_register(L, "createMesh", [](lua_State* L) -> int {
         // construct new MeshData at end of vector
         gMESH_DATA.emplace_back();
-        std::cout << "hi from createMesh()" << std::endl;
+        std::cout << "Creating mesh: " << gMESH_DATA.size() << std::endl;
+        std::cout << "lua_gettop() = " << lua_gettop(L) << std::endl;;
         // return: mesh_id
         lua_pushinteger(L, gMESH_DATA.size());
         return 1;// mesh_id
@@ -90,7 +91,15 @@ int main() {
     // Update existing MeshData in Cpp
     // args: mesh_id, layout, mesh, [indices]
     lua_register(L, "updateMesh", [](lua_State* L) -> int {
-        std::cout << "hi from updateMesh()" << std::endl;
+        //assert(lua_isnumber(L, 1));// arg: mesh_id
+        std::cout << "Updating mesh: " << lua_tointeger(L, 1) << std::endl;
+        //assert(lua_istable(L, 2));// arg: layout
+        //assert(lua_istable(L, 3));// arg: mesh
+
+        // Optionally handle indices
+        if (lua_gettop(L) == 4) {
+            //assert(lua_istable(L, 4));// arg: indices
+        }
         return 0;
     });
 
@@ -98,7 +107,6 @@ int main() {
     // args: int mesh_id
     lua_register(L, "drawMesh", [](lua_State* L) -> int {
         assert(lua_isnumber(L, 1));
-        std::cout << "hi from drawMesh()" << std::endl;
         //std::cout << gMESH_DATA[lua_tointeger(L, 1)] << std::endl;
         return 0;
     });
