@@ -11,6 +11,7 @@
 // Local
 #include "_generated/sys_paths.h"
 typedef unsigned int uint;
+inline std::string BLUE(std::string s) { return "\033[34m" + s + "\033[0m"; }
 
 void readfile(const std::string path, std::string& src) {
     std::ifstream file;
@@ -27,25 +28,30 @@ void readfile(const std::string path, std::string& src) {
     }
 }
 
-enum AttribType {
-    GENERIC=0,
-    POSITION=1,
-    NORMAL=2,
-    TEXTURE_COORD=3,
-    COLOR=4,
-};
-struct Attrib {
-    uint type;// see: enum AttribType
-    uint size;// number of components
-};
+// note: doesn't contain trailing slash
+std::string getDirectory(const std::string& path) {
+    size_t pos = path.find_last_of("/\\");   // handle both slashes
+    if (pos == std::string::npos) return ""; // no directory
+    return path.substr(0, pos);          // include trailing slash
+}
+
 struct MeshData {
+    struct Attrib {
+        enum Type {
+            GENERIC=0,
+            POSITION=1,
+            NORMAL=2,
+            TEXTURE_COORD=3,
+            COLOR=4,
+        };
+        Type type;// see: enum AttribType
+        uint size;// number of components
+    };
     // vertices
     std::vector<float> vertexData;
     std::vector<uint> indices;
-    uint vert_count=0;
     // attributes
     std::vector<Attrib> attributes;
-    uint attrib_count=0;
 };
 // Pretty-printing for MeshData
 std::ostream& operator<<(std::ostream& os, const MeshData& m) {
@@ -55,40 +61,55 @@ std::ostream& operator<<(std::ostream& os, const MeshData& m) {
 
 // Cpp MeshData for lua to manipulate
 static std::vector<MeshData> gMESH_DATA;
-
-// args: Attrib* layout, MeshData mesh
-auto createMesh = [](lua_State* L) -> int {
-    // return userdata
-    //MeshData* mesh = (MeshData*)lua_newuserdata(L, sizeof(MeshData));
-    return 1;
-};
-// args: userdata MeshData
-auto drawMesh = [](lua_State* L) -> int {
-    assert(lua_isuserdata(L, 1));
-    std::cout << *(MeshData*)(lua_touserdata(L, 1)) << std::endl;
-    return 0;
-};
-auto updateMesh = [](lua_State* L) -> int {
-    return 0;
-};
-
 int main() {
-    std::string lua_src;
-    readfile(LUA_DIR"/simple.lua", lua_src);
-    std::cout << "```lua\n" << lua_src << "\n```" << std::endl;
-    // Create Lua state
+    // Initialize Lua state
     lua_State* L = luaL_newstate();
-    // Create new MeshData for Cpp
-    lua_pushcfunction(L, createMesh);
-    lua_setglobal(L, "createMesh");
-    // Update existing MeshData in Cpp
-    lua_pushcfunction(L, updateMesh);
-    lua_setglobal(L, "updateMesh");
-    // Print MeshData
-    lua_pushcfunction(L, drawMesh);
-    lua_setglobal(L, "drawMesh");
-    // Run Lua Script
+    luaL_openlibs(L);
+    const std::string lua_path=LUA_DIR"/simple.lua";
+    std::string lua_src =
+        "package.path=package.path..';" + getDirectory(lua_path)+"/?.lua'\n" +
+        "package.path=package.path..';" + getDirectory(lua_path)+"/?/init.lua'\n"
+    ;
+    // setup package search paths
     luaL_dostring(L, lua_src.c_str());
+    // overwrite lua_src with lua script
+    readfile(lua_path, lua_src);
+    std::cout << "```" << BLUE(lua_path) << "\n" << lua_src << "\n```" << std::endl;
+
+    // Create new MeshData for Cpp
+    // args: layout, mesh, [indices]
+    lua_register(L, "createMesh", [](lua_State* L) -> int {
+        // construct new MeshData at end of vector
+        gMESH_DATA.emplace_back();
+        std::cout << "hi from createMesh()" << std::endl;
+        // return: mesh_id
+        lua_pushinteger(L, gMESH_DATA.size());
+        return 1;// mesh_id
+    });
+
+    // Update existing MeshData in Cpp
+    // args: mesh_id, layout, mesh, [indices]
+    lua_register(L, "updateMesh", [](lua_State* L) -> int {
+        std::cout << "hi from updateMesh()" << std::endl;
+        return 0;
+    });
+
+    // Print MeshData
+    // args: int mesh_id
+    lua_register(L, "drawMesh", [](lua_State* L) -> int {
+        assert(lua_isnumber(L, 1));
+        std::cout << "hi from drawMesh()" << std::endl;
+        //std::cout << gMESH_DATA[lua_tointeger(L, 1)] << std::endl;
+        return 0;
+    });
+
+    // Run Lua Script
+    if (luaL_dostring(L, lua_src.c_str()) != LUA_OK) {
+        const char* err = lua_tostring(L, -1);
+        std::cerr << "Lua error: " << err << std::endl;
+        lua_pop(L, 1);
+    }
+
     // Cleanup
     lua_close(L);
     return 0;
