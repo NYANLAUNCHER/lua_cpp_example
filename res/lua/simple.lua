@@ -1,6 +1,6 @@
 local attrib=require('CPP').AttribType
-local mesh = {
-  layout = {-- must provide as separate argument to createMesh()
+local mesh_data = {
+  layout = {
     {
       type=attrib.POSITION,
       size=2
@@ -18,19 +18,17 @@ local mesh = {
   -- EBO Data:
   -- Notes:
   -- - must contain only valid keys in `mesh`
-  -- - vertices above can have any key as long as they are indexed in `indices`
+  -- - vertices can have any key as long as they are indexed in `indices`
   indices={-- using CW winding order
     1, 2, 3, -- upper-right triangle
     1, 3, 4  -- lower-left triangle
   }
 }
--- mesh_id = 0
-local mesh_id = createMesh(mesh.layout, mesh)
-drawMesh(mesh_id)
+-- args: mesh_data
+local mesh = createMesh(mesh_data)
+mesh.draw()
 
--- overwrite mesh.indices
-local indices={
+-- args: [indices]
+mesh.draw({-- only draw a sub-set of indices
   1, 2, 3, -- upper-right triangle
-}
--- mesh_id = 1
-mesh_id = createMesh(mesh.layout, mesh, indices)
+})

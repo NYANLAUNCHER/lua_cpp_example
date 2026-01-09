@@ -7,8 +7,8 @@ export build := $(TOP)/build
 # output directories
 export BINDEST := $(build)/bin
 export LIBDEST := $(build)/lib
-# ensures compatability with `nix run` & `nix build`
 ifndef out
+# updates src/_generated/sys_paths.h
 out := $(build)
 endif
 export RESDEST := $(out)/share/$(pname)

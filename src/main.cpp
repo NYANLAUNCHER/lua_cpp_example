@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <new>
 #include <exception>
 #include <cassert>
 // lua
@@ -12,6 +13,7 @@
 #include "_generated/sys_paths.h"
 typedef unsigned int uint;
 inline std::string BLUE(std::string s) { return "\033[34m" + s + "\033[0m"; }
+inline std::string GREEN(std::string s) { return "\033[32m" + s + "\033[0m"; }
 
 void readfile(const std::string path, std::string& src) {
     std::ifstream file;
@@ -47,91 +49,91 @@ struct MeshData {
         Type type;
         uint size=0;// number of components (float)
     };
-    // vertices
-    std::vector<float> vertexData;
-    std::vector<uint> indices;
-    // attributes
     std::vector<Attrib> attributes;
-    MeshData() {
-        vertexData.clear();
-        indices.clear();
-        attributes.clear();
-    }
-    // called by createMesh()
+    std::vector<float> vertex_data;
+    std::vector<uint> indices;
+    // Zero-initialize vectors
+    MeshData():
+        attributes(),
+        vertex_data(),
+        indices()
+    {}
+    // Populate MeshData
     MeshData(
-        std::vector<float> vertexData,
-        std::vector<uint> indices,
-        std::vector<Attrib> attributes
+        std::vector<Attrib> attributes,
+        std::vector<float>  vertex_data,
+        std::vector<uint>   indices
     ):
-        vertexData(vertexData),
-        indices(indices),
-        attributes(attributes)
+        attributes(attributes),
+        vertex_data(vertex_data),
+        indices(indices)
     {}
 };
 // Pretty-printing for MeshData
 std::ostream& operator<<(std::ostream& os, const MeshData& m) {
-    if (m.attributes.size() == 0)
+    if (m.attributes.size() == 0) {
+        os<< "{\n}";
         return os;
-    //uint vert_size=0;
-    //for (uint i=0; i < m.attributes.size(); i++) {
-    //    //vert_size += m.attributes[i].size;
-    //    os << "m.attributes[" << i << "].size = " << m.attributes[i].size;
-    //}
-    //os << "vert_size = " << vert_size;
+    }
+    os << "{\n";
+    uint vert_size=0;
+    for (uint i=0; i < m.attributes.size(); i++) {
+        //vert_size += m.attributes[i].size;
+        os << "m.attributes[" << i << "].size = " << m.attributes[i].size;
+    }
+    os << "vert_size = " << vert_size;
+    os << "}\n";
     return os;
 }
 
-// Cpp MeshData for lua to manipulate
-static std::vector<MeshData> gMESH_DATA;
 int main() {
     // Initialize Lua state
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
     const std::string lua_path=LUA_DIR"/simple.lua";
-    // setup package search paths
     std::string lua_src =
-        "package.path=package.path..';" + getDirectory(lua_path)+"/?.lua'\n" +
-        "package.path=package.path..';" + getDirectory(lua_path)+"/?/init.lua'\n"
-    ;
+        "package.path=package.path..';" + getDirectory(lua_path) + "/?.lua'\n" +
+        "package.path=package.path..';" + getDirectory(lua_path) + "/?/init.lua'\n"
+    ;// setup package search paths
     luaL_dostring(L, lua_src.c_str());
-    readfile(lua_path, lua_src);// overwrites lua_src
-    std::cout << "\n```" << BLUE(lua_path) << "\n" << lua_src << "\n```" << std::endl;
+    readfile(lua_path, lua_src);// note: overwrites lua_src
+    std::cout << GREEN("\n```") << BLUE(lua_path) << "\n" << lua_src << GREEN("\n```") << std::endl;
 
-    // Create new MeshData for Cpp
-    // args: layout, mesh, [indices]
+    // Methods for MeshData, invoked by __index
+    lua_newtable(L);
+    int method_tbl=lua_gettop(L);
+    // mesh.draw()
+    lua_pushstring(L, "draw");// -2
+    lua_pushcfunction(L, [](lua_State* L) -> int {
+        // args: self, [indices]
+        //assert(lua_isuserdata(L, 1));
+        std::cout << "mesh.draw() called with " << lua_gettop(L) << " args." << std::endl;
+        if (lua_isuserdata(L, 1))
+            std::cout << *(MeshData*)(lua_touserdata(L, 1)) << std::endl;
+        return 0;
+    });// -1
+    lua_settable(L, method_tbl);// ["draw"] = cfunction()
+
+    // Assign method_tbl to __index
+    // 'libmesh' to avoid name conflicts in registry, see: https://www.lua.org/manual/5.4/manual.html#4.3
+    luaL_newmetatable(L, "libmesh.mt_MeshData");// -3
+    lua_pushstring(L, "__index");// -2
+    lua_pushvalue(L, method_tbl);// -1
+    lua_settable(L, -3);// key: -2, value: -1
+
+    // createMesh() for constructing MeshData
     lua_register(L, "createMesh", [](lua_State* L) -> int {
-        // construct new MeshData at end of vector
-        gMESH_DATA.emplace_back(/*
-            vertexData,
-            indices,
-            attributes
-        */);
-        // return: mesh_id
-        int& mesh_id = *(int*)(lua_newuserdata(L, sizeof(int)));
-        mesh_id = gMESH_DATA.size();
+        // return: MeshData mesh
+        MeshData& mesh = *(MeshData*)(lua_newuserdata(L, sizeof(MeshData)));
+        new (&mesh) MeshData();
+        // attach metatable to mesh
+        lua_pushvalue(L, -2);
+        int mt_MeshData=lua_gettop(L);
+        assert(lua_istable(L, mt_MeshData));
+        lua_setmetatable(L, -2);
+        // args: mesh_data={...}
+        assert(lua_istable(L, 1));
         return 1;// mesh_id
-    });
-
-    // Update existing MeshData in Cpp
-    // args: mesh_id, layout, mesh, [indices]
-    lua_register(L, "updateMesh", [](lua_State* L) -> int {
-        assert(lua_isuserdata(L, 1));// arg: mesh_id
-        //int& mesh_id=*(int*)(lua_touserdata(L, 1));
-        //assert(lua_istable(L, 2));// arg: layout
-        //assert(lua_istable(L, 3));// arg: mesh
-        // Optionally handle indices
-        if (lua_gettop(L) == 4) {
-            assert(lua_istable(L, 4));// arg: indices
-        }
-        return 0;
-    });
-
-    // Print MeshData
-    // args: userdata_t mesh_id
-    lua_register(L, "drawMesh", [](lua_State* L) -> int {
-        assert(lua_isuserdata(L, 1));
-        std::cout << gMESH_DATA[*(int*)(lua_touserdata(L, 1)) - 1] << std::endl;
-        return 0;
     });
 
     // Run Lua Script
@@ -140,7 +142,6 @@ int main() {
         std::cerr << "Lua error: " << err << std::endl;
         lua_pop(L, 1);
     }
-
     // Cleanup
     lua_close(L);
     return 0;
