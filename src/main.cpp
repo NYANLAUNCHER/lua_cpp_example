@@ -124,12 +124,10 @@ int main() {
     // createMesh() for constructing MeshData
     lua_register(L, "createMesh", [](lua_State* L) -> int {
         // return: MeshData mesh
-        MeshData& mesh = *(MeshData*)(lua_newuserdata(L, sizeof(MeshData)));
+        MeshData& mesh = *(MeshData*)(lua_newuserdata(L, sizeof(MeshData)));// -2
         new (&mesh) MeshData();
         // attach metatable to mesh
-        lua_pushvalue(L, -2);
-        int mt_MeshData=lua_gettop(L);
-        assert(lua_istable(L, mt_MeshData));
+        luaL_getmetatable(L, "libmesh.mt_MeshData");// -1
         lua_setmetatable(L, -2);
         // args: mesh_data={...}
         assert(lua_istable(L, 1));
