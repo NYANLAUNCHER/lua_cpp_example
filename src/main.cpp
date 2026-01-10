@@ -8,7 +8,7 @@
 #include <exception>
 #include <cassert>
 // lua
-#include <lua.hpp>
+#include "lua.hpp"
 // Local
 #include "_generated/sys_paths.h"
 typedef unsigned int uint;
@@ -103,48 +103,50 @@ int main() {
     lua_newtable(L);
     int method_tbl=lua_gettop(L);
     // mesh.draw()
-    lua_pushstring(L, "draw");// -2
+    lua_pushstring(L, "draw");
     lua_pushcfunction(L, [](lua_State* L) -> int {
         // args: self, [indices]
-        //assert(lua_isuserdata(L, 1));
-        std::cout << "mesh.draw() called with " << lua_gettop(L) << " args." << std::endl;
+        assert(lua_isuserdata(L, 1));
+        std::cout << "\nmesh:draw() called with " <<
+            lua_gettop(L) << " args;" <<
+            std::endl;
         if (lua_isuserdata(L, 1))
             std::cout << *(MeshData*)(lua_touserdata(L, 1)) << std::endl;
         return 0;
-    });// -1
-    lua_settable(L, method_tbl);// pop: -2, -1
+    });
+    lua_settable(L, method_tbl);
 
     // Assign method_tbl to __index
     // see: https://www.lua.org/pil/27.3.1.html
-    const void* mt_MeshData;// use light userdata to index metatable in registry
-    lua_pushlightuserdata(L, &mt_MeshData);// -2
-    lua_pushvalue(L, method_tbl);// -1
-    lua_settable(L, LUA_REGISTRYINDEX);// pop: -2, -1
-
-    luaL_newmetatable(L, "libmesh.mt_MeshData");// -3
-    lua_pushstring(L, "__index");// -2
-    lua_pushvalue(L, method_tbl);// -1
-    lua_settable(L, -3);// key: -2, value: -1
+    static const void* mt_MeshData;// use light userdata to index metatable in registry
+    // initialize mt_MeshData table
+    lua_newtable(L);// [+1]
+    lua_pushstring(L, "__index");// [+1]
+    lua_pushvalue(L, method_tbl);// [+1]
+    lua_settable(L, -3);// [-2]
+    // push mt_MeshData table to registry
+    lua_pushlightuserdata(L, &mt_MeshData);// [+1]
+    lua_pushvalue(L, -2);// [+1]
+    lua_settable(L, LUA_REGISTRYINDEX);// [-2]
 
     // construct MeshData in lua
     auto createMesh = [](lua_State* L) -> int {
         // return: MeshData mesh
-        MeshData& mesh = *(MeshData*)(lua_newuserdata(L, sizeof(MeshData)));// -2
+        MeshData& mesh = *(MeshData*)(lua_newuserdata(L, sizeof(MeshData)));
         new (&mesh) MeshData();// "placement new" to construct MeshData in-place
-        // upvalue: mt_MeshData
+        // upvalue: metatable @ REGISTRY[&mt_MeshData]
         lua_pushvalue(L, lua_upvalueindex(1));
-        std::cout << lua_tostring(L, -1);
-        //assert(lua_islightuserdata(L, -1));
-        // assign mt_MeshData to mesh
+        // assign mt_MeshData to userdata `mesh`
         lua_setmetatable(L, -2);
+
         // args: mesh_data={...}
         assert(lua_istable(L, 1));
         return 1;
     };
     lua_pushvalue(L, LUA_REGISTRYINDEX);
     lua_pushlightuserdata(L, &mt_MeshData);
-    lua_gettable(L, -2);
-    lua_pushcclosure(L, createMesh, 1);// upvalues: mt_MeshData
+    lua_rawget(L, -2);// pass metatable as upvalue
+    lua_pushcclosure(L, createMesh, 1);
     // provide "createMesh()" for lua
     lua_setglobal(L, "createMesh");
 
