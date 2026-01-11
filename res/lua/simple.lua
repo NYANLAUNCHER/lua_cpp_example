@@ -26,6 +26,7 @@ local mesh_data = {
 }
 -- args: mesh_data
 local mesh = createMesh(mesh_data)
+print(mesh:dump())
 mesh:draw()
 
 -- args: [indices]
