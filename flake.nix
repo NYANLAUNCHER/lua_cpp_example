@@ -15,7 +15,7 @@
       gcc autoconf automake pkg-config rsync
     ];
     buildInputs = with pkgs; [ # runtime dependencies
-      lua
+      lua54Packages.lua
     ];
     ##########################################
   in {
