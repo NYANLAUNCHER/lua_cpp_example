@@ -36,7 +36,7 @@ LDFLAGS += -llua
 .DEFAULT_GOAL :=
 .PHONY: build
 build: $(SUBMAKE) .ccls
-	@$(MAKE) $(TARGET)
+	@$(MAKE) --no-print-directory $(TARGET)
 
 .PHONY: run
 run: build

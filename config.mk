@@ -14,7 +14,6 @@ endif
 export RESDEST := $(out)/share/$(pname)
 
 # Default flags
-export MAKE := $(MAKE) --no-print-directory
 CXXFLAGS_DEBUG := -g -ggdb -DDEBUG
 CXXFLAGS_RELEASE := -O3 -Wall
 # Global CXXFLAGS
