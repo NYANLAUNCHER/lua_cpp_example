@@ -26,10 +26,14 @@ local mesh_data = {
 }
 -- args: mesh_data
 local mesh = createMesh(mesh_data)
-print(mesh:dump())
+print("\n--- mesh: ---")
 mesh:draw()
 
+print("\n--- upper-right triangle: ---")
 -- args: [indices]
 mesh:draw({-- only draw a sub-set of indices
   1, 2, 3, -- upper-right triangle
 })
+
+print("\n--- raw mesh data: ---")
+mesh:dump()

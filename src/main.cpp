@@ -13,7 +13,12 @@
 #include "lua.hpp"
 // Local
 #include "_generated/sys_paths.h"
+// Common
 typedef unsigned int uint;
+template<typename... Args>
+void println(Args&&... args) {
+    (std::cout << ... << args) << std::endl;
+}
 inline std::string RED(std::string s) { return "\032[31m" + s + "\033[0m"; }
 inline std::string GREEN(std::string s) { return "\033[32m" + s + "\033[0m"; }
 inline std::string BLUE(std::string s) { return "\033[34m" + s + "\033[0m"; }
@@ -128,9 +133,11 @@ int main() {
         if (lua_gettop(L) == 1)
             return 0;// only process indices if it exists
         if (lua_istable(L, 2)) {
+            /* Replace Me: */
             lua_getglobal(L, "print");
             lua_pushvalue(L, 2);
             lua_call(L, 1, LUA_MULTRET);// equivalent to `print(indices)` in lua
+            /* END */
         } else {
             std::cout << RED("Error: ") <<
                 "Method \"mesh:draw()\" requires parameter 2 (aka \"indices\") to be of type `table`." << std::endl;
@@ -139,16 +146,24 @@ int main() {
     });
     lua_settable(L, method_tbl);
 
-    // mesh:size()
+    // mesh:dump()
     lua_pushstring(L, "dump");
     lua_pushcfunction(L, [](lua_State* L) -> int {
-        // return: raw bytes of MeshData as a string of hexidecimal
+        if (lua_gettop(L) < 1) {
+            println("ERROR: mesh.dump(self) must take parameter self. Consider rewriting as: `mesh:dump()`.");
+            return 0;
+        }
+        if (!lua_isuserdata(L, 1)) {
+            println("ERROR: mesh.dump(self), self must be of type userdata.");
+            return 0;
+        }
         MeshData& mesh = *(MeshData*)(lua_touserdata(L, 1));
+        // print raw bytes of MeshData as a string of hexidecimal
         std::string buffer;
         for (size_t i=0; i < sizeof(mesh.vertex_data); ++i)
             buffer += std::format("{:#04x} ", ((uint8_t*)&(mesh.vertex_data))[i]);
-        lua_pushstring(L, buffer.c_str());
-        return 1;
+        println(buffer);
+        return 0;
     });
     lua_settable(L, method_tbl);
 
@@ -158,6 +173,7 @@ int main() {
     static const void* mt_MeshData;// use light userdata to index metatable in registry
     // initialize mt_MeshData table
     lua_newtable(L);// [+1]
+    // __index metamethod
     lua_pushstring(L, "__index");// [+1]
     lua_pushvalue(L, method_tbl);// [+1]
     lua_settable(L, -3);// [-2]
@@ -168,16 +184,29 @@ int main() {
 
     // construct MeshData in lua
     auto createMesh = [](lua_State* L) -> int {
-        // return: MeshData mesh
+        if (lua_gettop(L) != 1) {
+            println("ERROR: createMesh() must take exactly 1 argument.");
+            return 0;
+        }
         MeshData& mesh = *(MeshData*)(lua_newuserdata(L, sizeof(MeshData)));
         new (&mesh) MeshData();// "placement new" to construct MeshData in-place
+        int meshIdx = lua_gettop(L);// return @ end
         // upvalue: metatable @ REGISTRY[&mt_MeshData]
         lua_pushvalue(L, lua_upvalueindex(1));
-        // assign mt_MeshData to userdata `mesh`
-        lua_setmetatable(L, -2);
-
+        lua_setmetatable(L, meshIdx);// attach MeshData methods
         // args: mesh_data={...}
         assert(lua_istable(L, 1));
+        lua_len(L, 1);
+        int vert_cnt = lua_tonumber(L, -1);
+        println("Vertex count: ", vert_cnt);
+        // Runs per vertex in mesh_data
+        for (int i=1; i < vert_cnt; ++i) {
+            lua_getglobal(L, "print");
+            lua_rawgeti(L, 1, i);
+            lua_call(L, 1, 0);
+        }
+        // return: MeshData mesh
+        lua_pushvalue(L, meshIdx);
         return 1;
     };
     lua_pushvalue(L, LUA_REGISTRYINDEX);
